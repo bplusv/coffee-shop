@@ -4,13 +4,20 @@ from flask import Flask, request, jsonify, abort
 from flask_cors import CORS
 from werkzeug.exceptions import NotFound
 
-from .database.models import setup_db, db, Drink
+from .database.models import setup_db, db, Drink, db_drop_and_create_all
 from .auth.auth import AuthError, requires_auth
 
 
 app = Flask(__name__)
 setup_db(app)
 CORS(app)
+
+'''
+@TODO uncomment the following line to initialize the database
+!! NOTE THIS WILL DROP ALL RECORDS AND START YOUR DB FROM SCRATCH
+!! NOTE THIS MUST BE UNCOMMENTED ON FIRST RUN
+'''
+# db_drop_and_create_all()
 
 
 @app.route('/drinks', methods=['GET'])
@@ -21,7 +28,8 @@ def get_drinks():
             'success': True,
             'drinks': drinks
         })
-    except Exception:
+    except Exception as e:
+        print(e)
         abort(500)
 
 
@@ -68,8 +76,8 @@ def update_drink(payload, id):
         drink = Drink.query.get(id)
         if not drink:
             abort(404)
-        drink.title = request_data['title']
-        drink.recipe = json.dumps(request_data['recipe'])
+        drink.title = request_data.get('title', drink.title)
+        drink.recipe = json.dumps(request_data.get('recipe', drink.recipe))
         drink.update()
         return jsonify({
             'success': True,
@@ -129,7 +137,8 @@ def autherror(error):
         'success': False,
         'error': 'auth error',
         'message': 'Authentication error'
-    })
+    }), 401
+
 
 @app.errorhandler(500)
 def internal_server_error(e):
