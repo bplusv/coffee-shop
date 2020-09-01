@@ -2,6 +2,7 @@ import json
 
 from flask import Flask, request, jsonify, abort
 from flask_cors import CORS
+from werkzeug.exceptions import NotFound
 
 from .database.models import setup_db, db, Drink
 from .auth.auth import AuthError, requires_auth
@@ -13,8 +14,7 @@ CORS(app)
 
 
 @app.route('/drinks', methods=['GET'])
-@requires_auth('get:drinks-detail')
-def get_drinks(payload):
+def get_drinks():
     try:
         drinks = [drink.short() for drink in Drink.query.all()]
         return jsonify({
@@ -22,22 +22,22 @@ def get_drinks(payload):
             'drinks': drinks
         })
     except Exception:
-        return jsonify({'success': False})
+        abort(500)
 
 
 @app.route('/drinks-detail', methods=['GET'])
 @requires_auth('get:drinks-detail')
-def get_drink_detail(payload):
+def get_drinks_detail(payload):
     try:
         drinks = [drink.long() for drink in Drink.query.all()]
         return jsonify({
             'success': True,
             'drinks': drinks
         })
+    except AuthError as e:
+        raise e
     except Exception:
-        return jsonify({
-            'success': False
-        })
+        abort(500)
 
 
 @app.route('/drinks', methods=['POST'])
@@ -53,11 +53,11 @@ def post_drink(payload):
             'success': True,
             'drinks': [drink.long()]
         })
+    except AuthError as e:
+        raise e
     except Exception:
         db.session.rollback()
-        return jsonify({
-            'success': False
-        })
+        abort(422)
 
 
 @app.route('/drinks/<int:id>', methods=['PATCH'])
@@ -75,11 +75,13 @@ def update_drink(payload, id):
             'success': True,
             'drinks': [drink.long()]
         })
+    except AuthError as e:
+        raise e
+    except NotFound:
+        abort(404)
     except Exception:
         db.session.rollback()
-        return jsonify({
-            'success': False
-        })
+        abort(422)
 
 
 @app.route('/drinks/<int:drink_id>', methods=['DELETE'])
@@ -87,25 +89,29 @@ def update_drink(payload, id):
 def delete_drink(payload, drink_id):
     try:
         drink = Drink.query.get(drink_id)
+        if not drink:
+            abort(404)
         drink.delete()
         return jsonify({
             'success': True,
             'delete': drink.id
         })
+    except AuthError as e:
+        raise e
+    except NotFound:
+        abort(404)
     except Exception:
         db.session.rollback()
-        return jsonify({
-            'success': False
-        })
+        abort(500)
 
 
 @app.errorhandler(422)
 def unprocessable(error):
     return jsonify({
-                    "success": False,
-                    "error": 422,
-                    "message": "unprocessable"
-                    }), 422
+        "success": False,
+        "error": 422,
+        "message": "unprocessable"
+    }), 422
 
 
 @app.errorhandler(404)
@@ -117,7 +123,18 @@ def notfound(error):
     }), 404
 
 
-'''
-@TODO implement error handler for AuthError
-    error handler should conform to general task above 
-'''
+@app.errorhandler(AuthError)
+def autherror(error):
+    return jsonify({
+        'success': False,
+        'error': 'auth error',
+        'message': 'Authentication error'
+    })
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    return jsonify({
+        'success': False,
+        'error': 500,
+        'message': 'internal server error'
+    }), 500

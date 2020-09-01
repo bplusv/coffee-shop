@@ -1,9 +1,9 @@
-import json
-from flask import request, _request_ctx_stack
 from functools import wraps
+import json
+
+from flask import request
 from jose import jwt
 from urllib.request import urlopen
-
 
 AUTH0_DOMAIN = 'dev-runifpea.us.auth0.com'
 ALGORITHMS = ['RS256']
@@ -47,7 +47,7 @@ def check_permissions(permission, payload):
     if 'permissions' not in payload:
         raise AuthError({
             'code': 'permissions_payload_missing',
-            'description': 'Permissions payload is expected.'
+            'description': 'Permissions payload missing.'
         }, 401)
     if permission not in payload['permissions']:
         raise AuthError({
@@ -65,7 +65,7 @@ def verify_decode_jwt(token):
     if 'kid' not in unverified_header:
         raise AuthError({
             'code': 'invalid_header',
-            'description': 'Authorization malformed.'
+            'description': 'Not kID found in header.'
         }, 401)
     for key in jwks['keys']:
         if key['kid'] == unverified_header['kid']:
@@ -86,17 +86,15 @@ def verify_decode_jwt(token):
                 issuer='https://' + AUTH0_DOMAIN + '/'
             )
             return payload
-
         except jwt.ExpiredSignatureError:
             raise AuthError({
                 'code': 'token_expired',
                 'description': 'Token expired.'
             }, 401)
-
         except jwt.JWTClaimsError:
             raise AuthError({
                 'code': 'invalid_claims',
-                'description': 'Incorrect claims. Please, check the audience and issuer.'
+                'description': 'Incorrect claims. Check audience and issuer.'
             }, 401)
         except Exception:
             raise AuthError({
@@ -105,9 +103,9 @@ def verify_decode_jwt(token):
             }, 400)
     else:
         raise AuthError({
-                    'code': 'invalid_header',
-                    'description': 'Unable to find the appropriate key.'
-                }, 400)
+            'code': 'invalid_header',
+            'description': 'Unable to find the appropriate key.'
+        }, 400)
 
 
 def requires_auth(permission=''):
@@ -118,6 +116,5 @@ def requires_auth(permission=''):
             payload = verify_decode_jwt(token)
             check_permissions(permission, payload)
             return f(payload, *args, **kwargs)
-
         return wrapper
     return requires_auth_decorator
