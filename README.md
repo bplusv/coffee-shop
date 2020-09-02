@@ -1,5 +1,5 @@
 # FS Coffee Shop
-FS Coffee Shop is menu application that allows users to view drink names and graphics representing the ratios of ingredients in each drink.
+FS Coffee Shop is a menu application that allows users to view drink names and graphics representing the ratios of ingredients in each drink.
 
 - Front-end built with Angular + Ionic framework.
 - Back-end built with Python + Flask framework.
