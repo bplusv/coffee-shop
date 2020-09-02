@@ -132,11 +132,11 @@ def notfound(error):
 
 
 @app.errorhandler(AuthError)
-def autherror(error):
+def autherror(authError):
     return jsonify({
         'success': False,
-        'error': 'auth error',
-        'message': 'Authentication error'
+        'error': 'Auth error',
+        'message': authError.error['description']
     }), 401
 
 
